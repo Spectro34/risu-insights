@@ -1,0 +1,103 @@
+---
+# Run RISU diagnostics on managed nodes
+# Executes RISU and fetches results to control node
+#
+# Usage:
+#   ansible-playbook run-diagnostics.yml -i inventory/hosts
+#   ansible-playbook run-diagnostics.yml -i inventory/hosts -e "plugin_filter=system"
+#   ansible-playbook run-diagnostics.yml -i inventory/hosts --limit server1
+
+- name: Run RISU diagnostics
+  hosts: all
+  become: yes
+  gather_facts: yes
+  
+  vars:
+    risu_output_dir: /tmp/risu-results
+    plugin_filter: ""
+    results_output_file: "{{ risu_output_dir }}/risu-{{ inventory_hostname }}-{{ ansible_date_time.epoch }}.json"
+  
+  tasks:
+    # Verify RISU installation
+    - name: Verify RISU is installed
+      command: which risu
+      changed_when: false
+      register: risu_check
+      tags: [always, verify]
+    
+    # Create output directory
+    - name: Create output directory
+      file:
+        path: "{{ risu_output_dir }}"
+        state: directory
+        mode: '0755'
+      tags: [always]
+    
+    # Run diagnostics
+    - name: Run RISU diagnostics
+      risu:
+        state: run
+        filter: "{{ plugin_filter }}"
+        output: "{{ results_output_file }}"
+        timeout: 600
+      register: risu_run
+      tags: [diagnostics]
+    
+    # Verify and fetch results
+    - name: Verify output file exists
+      stat:
+        path: "{{ results_output_file }}"
+      register: results_file
+      tags: [diagnostics]
+    
+    - name: Fail if no output
+      fail:
+        msg: "RISU did not generate output: {{ results_output_file }}"
+      when: not results_file.stat.exists
+      tags: [diagnostics]
+    
+    - name: Fetch results to control node
+      fetch:
+        src: "{{ results_output_file }}"
+        dest: "{{ playbook_dir }}/../results/{{ inventory_hostname }}-risu.json"
+        flat: yes
+      tags: [fetch]
+    
+    # Parse and display summary
+    - name: Parse results
+      set_fact:
+        risu_data: "{{ lookup('file', playbook_dir + '/../results/' + inventory_hostname + '-risu.json') | from_json }}"
+      tags: [summary]
+    
+    - name: Extract failed checks
+      set_fact:
+        failed_checks: "{{ risu_data.results | dict2items | selectattr('value.result.rc', 'defined') | selectattr('value.result.rc', 'ne', 0) | selectattr('value.result.rc', 'ne', 10) | list }}"
+      when: risu_data.results is defined
+      tags: [summary]
+    
+    - name: Display results
+      debug:
+        msg: |
+          {{ inventory_hostname }}: {{ risu_data.results | length }} checks, {{ failed_checks | default([]) | length }} issues
+          {% if failed_checks | default([]) | length > 0 %}
+          Issues:
+          {% for check in failed_checks[:10] %}
+            - {{ check.key }}
+          {% endfor %}
+          {% if failed_checks | length > 10 %}
+            ... and {{ failed_checks | length - 10 }} more
+          {% endif %}
+          {% endif %}
+      when: risu_data.results is defined
+      tags: [summary]
+
+- name: Summary
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  
+  tasks:
+    - name: Display completion
+      debug:
+        msg: "✓ Diagnostics complete. Results in: {{ playbook_dir }}/../results/"
+      tags: [always]

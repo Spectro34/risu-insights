@@ -1,0 +1,139 @@
+---
+# Remediation playbook for log-spike-detected
+# This playbook safely cleans up oversized log files on Linux systems
+# Compatible with: RHEL, CentOS, Fedora, openSUSE, SLES, Debian, Ubuntu
+
+- name: Clean up large log files
+  hosts: all
+  become: yes
+  gather_facts: yes
+  
+  vars:
+    # Days to keep logs (override with -e log_retention_days=X)
+    log_retention_days: 30
+    # Target paths for log cleanup
+    log_paths:
+      - /var/log
+    # Minimum free space threshold in MB
+    min_free_space_mb: 1024
+    # Journal vacuum time
+    journal_retention: 30d
+  
+  tasks:
+    # Pre-cleanup validation
+    - name: Verify running on Linux system
+      assert:
+        that:
+          - ansible_system == "Linux"
+        fail_msg: "This playbook is designed for Linux systems only"
+        success_msg: "Running on Linux system ({{ ansible_distribution }} {{ ansible_distribution_version }})"
+    
+    - name: Get disk usage before cleanup
+      shell: df -h {{ log_paths | join(' ') }} | tail -n +2
+      register: disk_before
+      changed_when: false
+      
+    - name: Show disk usage before cleanup
+      debug:
+        msg: "{{ disk_before.stdout_lines }}"
+    
+    - name: Find top 10 largest log files
+      shell: |
+        find {{ log_paths | join(' ') }} -type f -exec du -h {} + 2>/dev/null | \
+        sort -rh | head -10
+      register: large_logs_before
+      changed_when: false
+      
+    - name: Display largest log files
+      debug:
+        msg: "{{ large_logs_before.stdout_lines }}"
+    
+    # Cleanup operations
+    - name: Remove old log files (older than {{ log_retention_days }} days)
+      shell: |
+        find {{ item }} -type f -name "*.log*" -mtime +{{ log_retention_days }} -print -delete
+      loop: "{{ log_paths }}"
+      register: old_logs_removed
+      ignore_errors: yes
+      when: not ansible_check_mode
+      
+    - name: Show removed old log files
+      debug:
+        msg: "{{ item.stdout_lines }}"
+      loop: "{{ old_logs_removed.results }}"
+      when: 
+        - old_logs_removed is defined
+        - item.stdout_lines is defined
+        - item.stdout_lines | length > 0
+    
+    - name: Remove compressed old logs
+      shell: |
+        find {{ item }} -type f \( -name "*.gz" -o -name "*.bz2" -o -name "*.xz" \) \
+        -mtime +{{ log_retention_days }} -print -delete
+      loop: "{{ log_paths }}"
+      register: compressed_removed
+      ignore_errors: yes
+      when: not ansible_check_mode
+      
+    - name: Rotate systemd journal (vacuum to {{ journal_retention }})
+      command: journalctl --vacuum-time={{ journal_retention }}
+      register: journal_cleanup
+      ignore_errors: yes
+      when: 
+        - not ansible_check_mode
+        - ansible_service_mgr == "systemd"
+      
+    - name: Show journal cleanup results
+      debug:
+        msg: "{{ journal_cleanup.stdout_lines }}"
+      when: 
+        - journal_cleanup is defined
+        - journal_cleanup.stdout_lines is defined
+    
+    - name: Force log rotation
+      command: logrotate -f /etc/logrotate.conf
+      register: logrotate_result
+      ignore_errors: yes
+      when: not ansible_check_mode
+      
+    # Post-cleanup validation
+    - name: Get disk usage after cleanup
+      shell: df -h {{ log_paths | join(' ') }} | tail -n +2
+      register: disk_after
+      changed_when: false
+      
+    - name: Show disk usage after cleanup
+      debug:
+        msg: "{{ disk_after.stdout_lines }}"
+    
+    - name: Find top 10 largest log files after cleanup
+      shell: |
+        find {{ log_paths | join(' ') }} -type f -exec du -h {} + 2>/dev/null | \
+        sort -rh | head -10
+      register: large_logs_after
+      changed_when: false
+      
+    - name: Display largest log files after cleanup
+      debug:
+        msg: "{{ large_logs_after.stdout_lines }}"
+    
+    - name: Calculate space freed
+      shell: |
+        BEFORE=$(df -BM {{ log_paths[0] }} | tail -1 | awk '{print $3}' | sed 's/M//')
+        AFTER=$(df -BM {{ log_paths[0] }} | tail -1 | awk '{print $3}' | sed 's/M//')
+        echo "$(($BEFORE - $AFTER)) MB freed"
+      register: space_freed
+      changed_when: false
+      ignore_errors: yes
+      
+    - name: Display cleanup summary
+      debug:
+        msg:
+          - "=== Log Cleanup Summary ==="
+          - "Retention policy: {{ log_retention_days }} days"
+          - "Journal retention: {{ journal_retention }}"
+          - "Disk usage before: {{ disk_before.stdout_lines }}"
+          - "Disk usage after: {{ disk_after.stdout_lines }}"
+          - "Space analysis: {{ space_freed.stdout | default('Unable to calculate') }}"
+
+

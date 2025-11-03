@@ -1,0 +1,18 @@
+# RISU Insights Inventory
+# Add your managed nodes here
+
+[all:vars]
+ansible_user=root
+ansible_become=yes
+ansible_become_method=sudo
+ansible_python_interpreter=/usr/bin/python3
+
+# Your managed nodes
+[managed_nodes]
+# server1.example.com
+# server2.example.com
+
+# Localhost for testing
+[localhost]
+127.0.0.1 ansible_connection=local ansible_become=no
+
