@@ -5,14 +5,14 @@ client with Ollama using Ansible.
 
 ## 1. Prerequisites
 
-- Linux/macOS host with Python 3.9+
-- Ansible 2.13+ (only needed for the optional deployment step)
+- Linux host with Python 3.9+
+- Ansible & ansible-runner on control node
 - SSH access to any managed nodes listed in `inventory/hosts`
 
 ## 2. Install Dependencies
 
 ```bash
-git clone https://github.com/<your-org>/risu-insights.git
+git clone https://github.com//risu-insights.git
 cd risu-insights
 python3 -m venv .venv
 source .venv/bin/activate
@@ -26,10 +26,10 @@ zypper refresh
 zypper install risu
 ```
 
-## 3. Configure Inventory (optional)
+## 3. Configure Inventory
 
-Edit `inventory/hosts` to add remote targets. Host and group variables declared
-there are automatically used by the MCP server to reach managed nodes.
+Edit `inventory/hosts` to add remote targets, Managed nodes are Ansible managed nodes and require ssh configuration.
+Host and group variables declared there are automatically used by the MCP server to reach managed nodes. 
 
 ## 4. Run the MCP Server
 
@@ -52,7 +52,7 @@ Install the shared role so Ansible can find it (for example by cloning into your
 default roles directory):
 
 ```bash
-git clone https://github.com/Spectro34/ansible-ollama_mcphost.git \
+git clone https://github.com//ansible-ollama_mcphost.git \
   ~/.ansible/roles/ansible-ollama_mcphost
 ```
 

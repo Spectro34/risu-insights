@@ -28,7 +28,7 @@ See [QUICKSTART.md](./QUICKSTART.md) for installation and deployment details.
 | `list_playbooks`| Enumerate remediation playbooks in `remediation_playbooks/`     |
 | `run_playbook`  | Execute a remediation playbook and report per-host stats        |
 
-Worker playbooks (`worker_playbooks/`) remain part of the runtime—they are how
+Worker playbooks (`worker_playbooks/`) remain part of the runtime they are how
 the server interacts with RISU and remote nodes.
 
 The `tmp/ansible` directory is kept intentionally so Ansible has a writable
