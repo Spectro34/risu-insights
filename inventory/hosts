@@ -9,10 +9,24 @@ ansible_python_interpreter=/usr/bin/python3
 
 # Your managed nodes
 [managed_nodes]
-# server1.example.com
-# server2.example.com
+server1.example.com
+server2.example.com
+
+[webservers]
+web.example.com
+web2.example.com
+
+[dbservers]
+db.example.com
+db2.example.com
+
+[appservers]
+app.example.com
+app2.example.com
 
 # Localhost for testing
 [localhost]
 127.0.0.1 ansible_connection=local ansible_become=no
 
+[sles]
+192.168.122.56 ansible_user=hash

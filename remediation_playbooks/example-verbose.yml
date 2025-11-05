@@ -1,0 +1,191 @@
+---
+# Example Remediation Playbook - Verbose Output Test
+# This playbook generates extensive output for testing MCP server output parsing
+# It does not make any actual changes, only simulates operations
+
+- name: Example Verbose Remediation Playbook
+  hosts: all
+  gather_facts: yes
+  vars:
+    verbose_mode: true
+    test_iterations: 5
+  
+  tasks:
+    - name: Display start banner
+      debug:
+        msg: |
+          ============================================
+          VERBOSE REMEDIATION PLAYBOOK - START
+          ============================================
+          Target: {{ inventory_hostname }}
+          Timestamp: {{ ansible_date_time.iso8601 }}
+          ============================================
+    
+    - name: Gather system information
+      set_fact:
+        system_info:
+          hostname: "{{ inventory_hostname }}"
+          os_family: "{{ ansible_os_family }}"
+          distribution: "{{ ansible_distribution }}"
+          distribution_version: "{{ ansible_distribution_version }}"
+          kernel: "{{ ansible_kernel }}"
+          memory_total: "{{ ansible_memtotal_mb }}MB"
+          processors: "{{ ansible_processor_count }}"
+    
+    - name: Display system information
+      debug:
+        var: system_info
+        verbosity: 0
+    
+    - name: Simulate file system check
+      shell: |
+        echo "=== File System Check ==="
+        df -h / | tail -1
+        echo "Disk usage analysis complete"
+        echo "Status: OK"
+      register: filesystem_check
+      changed_when: false
+    
+    - name: Display filesystem check results
+      debug:
+        msg: |
+          Filesystem Check Results:
+          {{ filesystem_check.stdout_lines | join('\n') }}
+          Status: Filesystem healthy
+    
+    - name: Simulate service status check
+      shell: |
+        echo "=== Service Status Check ==="
+        systemctl list-units --type=service --state=running | head -5
+        echo "Total running services checked"
+      register: service_check
+      changed_when: false
+    
+    - name: Display service check results
+      debug:
+        msg: |
+          Service Status Check:
+          {{ service_check.stdout_lines | join('\n') }}
+          Summary: All critical services running
+    
+    - name: Simulate configuration validation
+      set_fact:
+        config_validation:
+          - item: "Network configuration"
+            status: "Valid"
+            details: "All interfaces configured correctly"
+          - item: "Firewall rules"
+            status: "Valid"
+            details: "No conflicts detected"
+          - item: "User permissions"
+            status: "Valid"
+            details: "All permissions correct"
+          - item: "Package repositories"
+            status: "Valid"
+            details: "All repos accessible"
+    
+    - name: Display configuration validation results
+      debug:
+        msg: |
+          Configuration Validation Results:
+          {% for item in config_validation %}
+          • {{ item.item }}: {{ item.status }}
+            {{ item.details }}
+          {% endfor %}
+          Overall Status: All configurations valid
+    
+    - name: Simulate log file analysis
+      shell: |
+        echo "=== Log File Analysis ==="
+        echo "Checking /var/log/messages (last 10 lines)"
+        tail -10 /var/log/messages 2>/dev/null || echo "Log file not accessible"
+        echo "Analysis complete"
+      register: log_analysis
+      changed_when: false
+      failed_when: false
+    
+    - name: Display log analysis summary
+      debug:
+        msg: |
+          Log Analysis Summary:
+          {{ log_analysis.stdout_lines | join('\n') }}
+          Recommendation: No issues detected
+    
+    - name: Simulate network connectivity test
+      shell: |
+        echo "=== Network Connectivity Test ==="
+        echo "Testing connectivity to common services..."
+        ping -c 1 127.0.0.1 > /dev/null 2>&1 && echo "Localhost: OK" || echo "Localhost: FAILED"
+        echo "Connectivity test complete"
+      register: network_test
+      changed_when: false
+    
+    - name: Display network test results
+      debug:
+        msg: |
+          Network Connectivity Results:
+          {{ network_test.stdout_lines | join('\n') }}
+          Status: Network connectivity verified
+    
+    - name: Simulate package update check
+      shell: |
+        echo "=== Package Update Check ==="
+        echo "Checking for available updates..."
+        zypper list-updates 2>/dev/null | head -5 || echo "Update check completed"
+        echo "Package check finished"
+      register: package_check
+      changed_when: false
+      failed_when: false
+    
+    - name: Display package check results
+      debug:
+        msg: |
+          Package Update Check Results:
+          {{ package_check.stdout_lines | join('\n') }}
+          Summary: System up to date
+    
+    - name: Generate detailed summary
+      set_fact:
+        remediation_summary:
+          checks_performed: 6
+          checks_passed: 6
+          checks_failed: 0
+          warnings: 0
+          recommendations:
+            - "System is healthy"
+            - "No immediate action required"
+            - "Continue regular monitoring"
+          next_steps:
+            - "Schedule next verification"
+            - "Review logs weekly"
+    
+    - name: Display final summary
+      debug:
+        msg: |
+          ============================================
+          REMEDIATION SUMMARY
+          ============================================
+          Host: {{ inventory_hostname }}
+          Checks Performed: {{ remediation_summary.checks_performed }}
+          Checks Passed: {{ remediation_summary.checks_passed }}
+          Checks Failed: {{ remediation_summary.checks_failed }}
+          Warnings: {{ remediation_summary.warnings }}
+          
+          Recommendations:
+          {% for rec in remediation_summary.recommendations %}
+          • {{ rec }}
+          {% endfor %}
+          
+          Next Steps:
+          {% for step in remediation_summary.next_steps %}
+          • {{ step }}
+          {% endfor %}
+          
+          ============================================
+          REMEDIATION COMPLETE
+          ============================================
+    
+    - name: Final status
+      debug:
+        msg: "✓ All checks completed successfully on {{ inventory_hostname }}"
+

@@ -16,7 +16,11 @@
     risu_output_dir: /tmp/risu-results
     plugin_filter: ""
     results_output_file: "{{ risu_output_dir }}/risu-{{ inventory_hostname }}-{{ ansible_date_time.epoch }}.json"
-  
+    ansible_ssh_use_tty: false
+    ansible_ssh_pipelining: true
+    ansible_become: yes
+    ansible_become_method: sudo
+
   tasks:
     # Verify RISU installation
     - name: Verify RISU is installed
@@ -56,39 +60,25 @@
       when: not results_file.stat.exists
       tags: [diagnostics]
     
-    - name: Fetch results to control node
-      fetch:
+    # Read results JSON (no file storage)
+    - name: Read results JSON
+      slurp:
         src: "{{ results_output_file }}"
-        dest: "{{ playbook_dir }}/../results/{{ inventory_hostname }}-risu.json"
-        flat: yes
-      tags: [fetch]
+      register: results_json
+      tags: [summary]
+      no_log: true
     
-    # Parse and display summary
+    # Parse results and store as fact for server to extract
     - name: Parse results
       set_fact:
-        risu_data: "{{ lookup('file', playbook_dir + '/../results/' + inventory_hostname + '-risu.json') | from_json }}"
+        risu_data_json: "{{ results_json.content | b64decode }}"
       tags: [summary]
+      no_log: true
     
-    - name: Extract failed checks
-      set_fact:
-        failed_checks: "{{ risu_data.results | dict2items | selectattr('value.result.rc', 'defined') | selectattr('value.result.rc', 'ne', 0) | selectattr('value.result.rc', 'ne', 10) | list }}"
-      when: risu_data.results is defined
-      tags: [summary]
-    
-    - name: Display results
+    # Display minimal summary
+    - name: Display summary
       debug:
-        msg: |
-          {{ inventory_hostname }}: {{ risu_data.results | length }} checks, {{ failed_checks | default([]) | length }} issues
-          {% if failed_checks | default([]) | length > 0 %}
-          Issues:
-          {% for check in failed_checks[:10] %}
-            - {{ check.key }}
-          {% endfor %}
-          {% if failed_checks | length > 10 %}
-            ... and {{ failed_checks | length - 10 }} more
-          {% endif %}
-          {% endif %}
-      when: risu_data.results is defined
+        msg: "RISU_RESULTS_JSON_START:{{ risu_data_json }}:RISU_RESULTS_JSON_END"
       tags: [summary]
 
 - name: Summary
@@ -99,5 +89,5 @@
   tasks:
     - name: Display completion
       debug:
-        msg: "✓ Diagnostics complete. Results in: {{ playbook_dir }}/../results/"
+        msg: "✓ Diagnostics complete. Results processed and returned."
       tags: [always]

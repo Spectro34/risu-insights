@@ -1,0 +1,15 @@
+---
+- name: Bootstrap Ollama and MCPHost client
+  hosts: all
+  become: false
+  roles:
+    - role: ansible-ollama_mcphost
+      vars:
+        ollama_state: "{{ ollama_state | default('present') }}"
+        mcphost_state: "{{ mcphost_state | default('present') }}"
+        risu_mcp_host: "{{ risu_mcp_host | default('localhost') }}"
+        risu_mcp_port: "{{ risu_mcp_port | default(8000) }}"
+        # Example GPU override:
+        # ollama_gpu_enabled: true
+        # ollama_pull_models:
+        #   - "mistral:7b"
