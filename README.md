@@ -88,3 +88,9 @@ defaults to regenerate the configuration.
 
 Re-run with `ollama_state=absent` and `mcphost_state=absent` to remove the
 stack, optionally toggling `mcphost_cleanup_package` to uninstall the CLI.
+<img width="1651" height="944" alt="Screenshot_2025-11-06_04-40-31" src="https://github.com/user-attachments/assets/4b8ed721-b4d1-4b69-a584-1809c0b36db5" />
+<img width="1732" height="977" alt="Screenshot_2025-11-06_04-38-27" src="https://github.com/user-attachments/assets/17074764-1e5c-4472-96fc-056ba833c711" />
+<img width="1853" height="960" alt="Screenshot_2025-11-06_04-38-10" src="https://github.com/user-attachments/assets/b4dffd05-0dc4-4f08-8bc8-a47c1c05893c" />
+<img width="1534" height="961" alt="Screenshot_2025-11-06_04-33-35" src="https://github.com/user-attachments/assets/8252ebbe-4065-4460-9bd5-5cde79d1aa74" />
+
+
