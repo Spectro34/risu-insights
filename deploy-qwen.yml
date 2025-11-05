@@ -23,7 +23,7 @@
         cwd: "{{ playbook_dir }}"
         description: "Ansible Runner MCP server - AWX-style consolidated tools"
         env:
-          ANSIBLE_RUNNER_PRIVATE_DATA_DIR: "/home/spectro/github/runner/ansible-runner"
+          ANSIBLE_RUNNER_PRIVATE_DATA_DIR: "{{ ansible_env.HOME }}/github/runner/ansible-runner"
           PYTHONUNBUFFERED: "1"
   
   tasks:

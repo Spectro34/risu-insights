@@ -1,115 +1,85 @@
 # Quick Start
 
-Spin up the RISU Insights MCP server locally and (optionally) prepare an MCPHost
-client with Ollama using Ansible.
-
-## 1. Prerequisites
-
-- Linux host with Python 3.9+
-- Ansible & ansible-runner on control node
-- SSH access to any managed nodes listed in `inventory/hosts`
-
-## 2. Install Dependencies
+## 1. Clone the Repositories
 
 ```bash
-git clone https://github.com//risu-insights.git
-cd risu-insights
+mkdir -p ~/risu && cd ~/risu
+git clone https://github.com/Spectro34/risu-insights.git
+git clone https://github.com/Spectro34/ansible-ollama_mcphost.git
+git clone https://github.com/Spectro34/ansible-risu.git
+```
+
+The projects expect to sit side-by-side exactly like the layout above.
+
+## 2. Create a Virtual Environment
+
+```bash
+cd ~/risu/risu-insights
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
-The RISU package can be found here: 
+
+## 3. Install RISU Locally
+
+RISU must be present on the machine so diagnostics succeed:
 
 ```bash
-zypper addrepo https://download.opensuse.org/repositories/home:hsharma/openSUSE_Factory/home:hsharma.repo
-zypper refresh
-zypper install risu
+sudo zypper addrepo \
+  https://download.opensuse.org/repositories/home:hsharma/openSUSE_Factory/home:hsharma.repo
+sudo zypper refresh
+sudo zypper install risu
 ```
 
-## 3. Configure Inventory
+## 4. Bootstrap Ollama + mcphost
 
-Edit `inventory/hosts` to add remote targets, Managed nodes are Ansible managed nodes and require ssh configuration.
-Host and group variables declared there are automatically used by the MCP server to reach managed nodes. 
-
-## 4. Run the MCP Server
-
-```bash
-./run-server.sh
-```
-
-By default the server listens on `127.0.0.1:8000`. To change the bind address or
-port, set environment variables before starting:
-
-```bash
-export RISU_INSIGHTS_HOST=0.0.0.0
-export RISU_INSIGHTS_PORT=9000
-./run-server.sh
-```
-
-## 5. Optional: Bootstrap Ollama + MCPHost
-
-Install the shared role so Ansible can find it (for example by cloning into your
-default roles directory):
-
-```bash
-git clone https://github.com//ansible-ollama_mcphost.git \
-  ~/.ansible/roles/ansible-ollama_mcphost
-```
-
-Then point the playbook at the host that will run `mcphost`:
-
-```bash
-ansible-playbook deploy-ollama-mcphost.yml -i inventory/hosts --limit <target>
-```
-
-Override the endpoint if the server runs elsewhere:
+The inventory already contains a `localhost` group configured for a local
+connection, so just limit to that host:
 
 ```bash
 ansible-playbook deploy-ollama-mcphost.yml \
-  -i inventory/hosts --limit <target> \
-  -e risu_mcp_host=my-server.example.com \
-  -e risu_mcp_port=9000
+  -i inventory/hosts --limit localhost
 ```
 
-During installation the role leaves GPU offload disabled and does not pull any
-models. Enable and customise these behaviours by setting variables:
+This pulls the `qwen3-coder:30b` model, enables ROCm GPU by default, and writes
+`~/.mcphost.yml`. Override settings inline when needed, e.g.:
 
 ```bash
 ansible-playbook deploy-ollama-mcphost.yml \
-  -i inventory/hosts --limit gpu-node \
-  -e ollama_gpu_enabled=true \
-  -e ollama_pull_models='["qwen2.5:32b"]'
+  -i inventory/hosts --limit localhost \
+  -e ollama_gpu_runtime=cuda \
+  -e ollama_model=mistral:7b \
+  -e ollama_pull_models='["mistral:7b"]'
 ```
+For more options check ansible-ollama_mcphost readme.
 
-To reverse the installation (stop services, drop config files, and optionally
-uninstall packages) run the playbook again with `ollama_state=absent` and
-`mcphost_state=absent`:
+> **Note:** The role installs both `ollama` and `mcphost` via your system
+> package manager.
+
+Re-running the playbook updates the mcphost config in-place. If you want to
+clear out stale config without touching the Ollama installation, run once with:
 
 ```bash
 ansible-playbook deploy-ollama-mcphost.yml \
-  -i inventory/hosts --limit <target> \
-  -e ollama_state=absent -e mcphost_state=absent \
-  -e mcphost_cleanup_package=true
+  -i inventory/hosts --limit localhost \
+  -e mcphost_state=absent -e mcphost_cleanup_package=false
 ```
 
-For a GPU-focused example that also wires in the Ansible Runner MCP server, see
-`deploy-qwen.yml`. Both playbooks assume the role is available on Ansible’s
-standard roles path (e.g. `~/.ansible/roles/ansible-ollama_mcphost`).
+Then rerun the standard command above to regenerate the configuration.
 
-Afterwards, SSH to the target and launch the client:
+If sudo on your machine prompts for a password, add `--ask-become-pass` to the
+playbook command.
+
+## 5. Use mcphost
+
+Start the client that was just configured:
 
 ```bash
 mcphost
 ```
 
-## 6. Verifying the Flow
+From there, try:
 
-From any MCP client (e.g. `mcphost`), call the tools exposed by the server:
-
-- `list_inventory` to inspect hosts/groups
-- `run_diagnostics` to execute RISU on local or remote nodes
-- `run_playbook` to apply remediation playbooks in `remediation_playbooks/`
-
-All diagnostics run through `worker_playbooks/run-diagnostics.yml`, so ensure
-managed nodes can reach the server over SSH and have RISU available (or use the
-provided `install-risu-package.yml` helper).
+- `list_inventory` – confirms the localhost entry
+- `run_diagnostics` – runs RISU on localhost via the Ansible module
+- `run_playbook` – executes sample remediation playbooks

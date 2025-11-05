@@ -1,15 +1,19 @@
 ---
 - name: Bootstrap Ollama and MCPHost client
   hosts: all
-  become: false
+  become: true
   roles:
     - role: ansible-ollama_mcphost
       vars:
-        ollama_state: "{{ ollama_state | default('present') }}"
-        mcphost_state: "{{ mcphost_state | default('present') }}"
-        risu_mcp_host: "{{ risu_mcp_host | default('localhost') }}"
-        risu_mcp_port: "{{ risu_mcp_port | default(8000) }}"
-        # Example GPU override:
-        # ollama_gpu_enabled: true
-        # ollama_pull_models:
-        #   - "mistral:7b"
+        risu_insights_repo_path: "{{ playbook_dir | realpath }}"
+        risu_insights_venv_path: "{{ (playbook_dir | realpath) + '/.venv' }}"
+        mcphost_config_path: "{{ lookup('env', 'HOME') }}/.mcphost.yml"
+        mcphost_local_servers:
+          - name: "risu-insights"
+            description: "RISU Insights MCP server"
+            command: ["{{ (playbook_dir | realpath) }}/run-server.sh"]
+            cwd: "{{ risu_insights_repo_path }}"
+            env:
+              RISU_INSIGHTS_ROOT: "{{ risu_insights_repo_path }}"
+              RISU_INSIGHTS_INVENTORY: "{{ risu_insights_repo_path }}/inventory/hosts"
+              RISU_VENV: "{{ risu_insights_venv_path }}"

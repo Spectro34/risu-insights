@@ -2,7 +2,10 @@
 
 RISU Insights exposes RISU diagnostics and Ansible remediation playbooks through
 the Model Context Protocol (MCP). Connect any MCP-aware client (e.g. mcphost) to
-drive end-to-end health checks and fixes from structured tool responses.
+drive health checks and fixes from structured tool responses. The
+project expects the sibling repositories `ansible-ollama_mcphost` (role) and
+`ansible-risu` (custom module) to live next to this directory so Ansible can
+locate them automatically.
 
 See [QUICKSTART.md](./QUICKSTART.md) for installation and deployment details.
 
@@ -32,7 +35,10 @@ Worker playbooks (`worker_playbooks/`) remain part of the runtime they are how
 the server interacts with RISU and remote nodes.
 
 The `tmp/ansible` directory is kept intentionally so Ansible has a writable
-staging area even on sandboxed hosts.
+staging area even on sandboxed hosts. The `ansible.cfg` file points to the
+bundled role (`../ansible-ollama_mcphost`) and module library
+(`../ansible-risu/library`). Adjust those paths if you relocate the repositories
+or export `ANSIBLE_ROLES_PATH` / `ANSIBLE_LIBRARY`.
 
 ## Repository Layout
 
@@ -44,21 +50,41 @@ deploy-ollama-mcphost.yml Playbook wrapper for the shared role
 deploy-qwen.yml           GPU-centric example (Qwen + Ansible Runner MCP)
 ```
 
-The Ollama + mcphost role lives in a separate repository:
+## Deploying mcphost + Ollama
 
-```
-git clone https://github.com/Spectro34/ansible-ollama_mcphost.git \
-  ~/.ansible/roles/ansible-ollama_mcphost
+`deploy-ollama-mcphost.yml` wraps the shared role stored in
+`../ansible-ollama_mcphost`. By default it:
+
+- pulls the `qwen3-coder:30b` model
+- enables GPU offload with the ROCm runtime (AMD)
+- writes a ready-to-use `mcphost` config pointing at the RISU Insights MCP
+  endpoint and registers a local `risu-insights` server that runs
+  `./run-server.sh` on demand
+
+Override variables at run-time to pick a different model or disable GPU:
+
+```bash
+ansible-playbook deploy-ollama-mcphost.yml \
+  -i inventory/hosts --limit ollama-host \
+  -e ollama_model=mistral:7b \
+  -e ollama_pull_models='["mistral:7b"]' \
+  -e ollama_gpu_enabled=false
 ```
 
-The RISU package can be found here: 
+If `mcphost` runs on a different machine than the RISU Insights checkout,
+override the repository and virtualenv paths so the generated `mcphost` config
+knows how to launch the server:
 
-```
-zypper addrepo https://download.opensuse.org/repositories/home:hsharma/openSUSE_Factory/home:hsharma.repo
-zypper refresh
-zypper install risu
+```bash
+ansible-playbook deploy-ollama-mcphost.yml \
+  -i inventory/hosts --limit remote-host \
+  -e risu_insights_repo_path=/opt/risu/risu-insights \
+  -e risu_insights_venv_path=/opt/risu/.venv
 ```
 
-It supports both installation and cleanup workflows. To enable GPU offload,
-set `ollama_gpu_enabled: true`; to remove everything, rerun with
-`ollama_state: absent` and `mcphost_state: absent`.
+To wipe the mcphost config without uninstalling packages, run the playbook with
+`mcphost_state=absent -e mcphost_cleanup_package=false`, then rerun with
+defaults to regenerate the configuration.
+
+Re-run with `ollama_state=absent` and `mcphost_state=absent` to remove the
+stack, optionally toggling `mcphost_cleanup_package` to uninstall the CLI.
