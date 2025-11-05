@@ -86,6 +86,13 @@ To wipe the mcphost config without uninstalling packages, run the playbook with
 `mcphost_state=absent -e mcphost_cleanup_package=false`, then rerun with
 defaults to regenerate the configuration.
 
+ try:
+
+    list_inventory – confirms the localhost entry
+    run_diagnostics – runs RISU on localhost via the Ansible module
+    run_playbook – executes sample remediation playbooks
+
+
 Re-run with `ollama_state=absent` and `mcphost_state=absent` to remove the
 stack, optionally toggling `mcphost_cleanup_package` to uninstall the CLI.
 <img width="1651" height="944" alt="Screenshot_2025-11-06_04-40-31" src="https://github.com/user-attachments/assets/4b8ed721-b4d1-4b69-a584-1809c0b36db5" />
