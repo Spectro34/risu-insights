@@ -20,9 +20,9 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## 3. Install RISU Locally
+## 3. Install RISU on Managed nodes
 
-RISU must be present on the machine so diagnostics succeed:
+RISU must be present on the ansible managed nodes so diagnostics succeed:
 
 ```bash
 sudo zypper addrepo \
@@ -31,7 +31,7 @@ sudo zypper refresh
 sudo zypper install risu
 ```
 
-## 4. Bootstrap Ollama + mcphost
+## 4. Setup Ollama + mcphost
 
 The inventory already contains a `localhost` group configured for a local
 connection, so just limit to that host:
