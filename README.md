@@ -88,9 +88,9 @@ defaults to regenerate the configuration.
 
  try:
 
-    list_inventory – confirms the localhost entry
-    run_diagnostics – runs RISU on localhost via the Ansible module
-    run_playbook – executes sample remediation playbooks
+    list_inventory
+    run_diagnostics
+    run_playbook
 
 
 Re-run with `ollama_state=absent` and `mcphost_state=absent` to remove the
