@@ -1,7 +1,6 @@
 ---
 # Install RISU via package manager
-# Primary production installation method - SUSE/openSUSE via zypper
-#
+# NOTE : Archived
 # Usage:
 #   ansible-playbook install-risu-package.yml -i inventory/hosts
 #   ansible-playbook install-risu-package.yml -i inventory/hosts --check  # Dry run
@@ -20,7 +19,7 @@
           Package Manager: {{ ansible_pkg_mgr }}
       tags: [always]
     
-    # Install RISU using generic package module (supports zypper/yum/dnf/apt)
+    # Install RISU using generic package module
     - name: Install RISU package
       package:
         name: risu
