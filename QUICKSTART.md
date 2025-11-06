@@ -80,6 +80,6 @@ mcphost
 
 From there, try:
 
-- `list_inventory` – confirms the localhost entry
-- `run_diagnostics` – runs RISU on localhost via the Ansible module
-- `run_playbook` – executes sample remediation playbooks
+- `list_inventory` – List all managed nodes, list webservers, db etc
+- `run_diagnostics` – runs RISU on managed nodes
+- `run_playbook` – run playbook on webservers, db etc
