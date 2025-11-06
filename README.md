@@ -1,4 +1,4 @@
-# RISU Insights MCP Server
+# WIP:RISU Insights MCP Server
 
 RISU Insights exposes RISU diagnostics and Ansible remediation playbooks through
 the Model Context Protocol (MCP). Connect any MCP-aware client (e.g. mcphost) to
