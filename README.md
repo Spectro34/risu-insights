@@ -1,103 +1,108 @@
-# WIP:RISU Insights MCP Server
+# RISU Insights MCP Server
 
-RISU Insights exposes RISU diagnostics and Ansible remediation playbooks through
-the Model Context Protocol (MCP). Connect any MCP-aware client (e.g. mcphost) to
-drive health checks and fixes from structured tool responses. The
-project expects the sibling repositories `ansible-ollama_mcphost` (role) and
-`ansible-risu` (custom module) to live next to this directory so Ansible can
-locate them automatically.
+RISU Insights is an MCP server that exposes RISU diagnostics and Ansible remediation playbooks.
 
-See [QUICKSTART.md](./QUICKSTART.md) for installation and deployment details.
+## Quick Setup Using the Role
 
-## How it Works
+The easiest way to set up RISU Insights is using the `ansible-ollama_mcphost` role:
 
-1. **Client request** – An MCP client calls a tool such as `run_diagnostics`.
-2. **Server orchestration** – `server.py` resolves hosts, renders inventory
-   variables, and invokes `worker_playbooks/run-diagnostics.yml` via
-   `ansible-runner`.
-3. **RISU execution** – Managed nodes run RISU, returning structured JSON
-   payloads that the server trims to concise per-host summaries.
-4. **Remediation** – When asked, `risu_insights/playbooks.py` executes the
-   selected remedy from `remediation_playbooks/`, streaming aggregated stats
-   back to the client.
-
-## Tool Surface
-
-| Tool            | Purpose                                                         |
-|-----------------|-----------------------------------------------------------------|
-| `list_inventory`| Parse `inventory/hosts` and report hosts/groups                 |
-| `resolve_hosts` | Expand patterns or groups without shelling out to `ansible`    |
-| `run_diagnostics` | Run RISU on local or remote hosts, returning structured issues |
-| `list_playbooks`| Enumerate remediation playbooks in `remediation_playbooks/`     |
-| `run_playbook`  | Execute a remediation playbook and report per-host stats        |
-
-Worker playbooks (`worker_playbooks/`) remain part of the runtime they are how
-the server interacts with RISU and remote nodes.
-
-The `tmp/ansible` directory is kept intentionally so Ansible has a writable
-staging area even on sandboxed hosts. The `ansible.cfg` file points to the
-bundled role (`../ansible-ollama_mcphost`) and module library
-(`../ansible-risu/library`). Adjust those paths if you relocate the repositories
-or export `ANSIBLE_ROLES_PATH` / `ANSIBLE_LIBRARY`.
-
-## Repository Layout
-
-```
-risu_insights/            Core modules (config, diagnostics, inventory, playbooks)
-worker_playbooks/         Ansible playbooks invoked by the MCP tools
-remediation_playbooks/    Ready-to-run remediation examples
-deploy-ollama-mcphost.yml Playbook wrapper for the shared role
-deploy-qwen.yml           GPU-centric example (Qwen + Ansible Runner MCP)
-```
-
-## Deploying mcphost + Ollama
-
-`deploy-ollama-mcphost.yml` wraps the shared role stored in
-`../ansible-ollama_mcphost`. By default it:
-
-- pulls the `qwen3-coder:30b` model
-- enables GPU offload with the ROCm runtime (AMD)
-- writes a ready-to-use `mcphost` config pointing at the RISU Insights MCP
-  endpoint and registers a local `risu-insights` server that runs
-  `./run-server.sh` on demand
-
-Override variables at run-time to pick a different model or disable GPU:
+### 1. Clone the RISU Insights Repository
 
 ```bash
-ansible-playbook deploy-ollama-mcphost.yml \
-  -i inventory/hosts --limit ollama-host \
-  -e ollama_model=mistral:7b \
-  -e ollama_pull_models='["mistral:7b"]' \
-  -e ollama_gpu_enabled=false
+cd /path/to/ansible-ollama_mcphost/mcp_servers
+git clone https://github.com/Spectro34/risu-insights.git risu-insights
 ```
 
-If `mcphost` runs on a different machine than the RISU Insights checkout,
-override the repository and virtualenv paths so the generated `mcphost` config
-knows how to launch the server:
+### 2. Set Up the Server Dependencies
 
 ```bash
-ansible-playbook deploy-ollama-mcphost.yml \
-  -i inventory/hosts --limit remote-host \
-  -e risu_insights_repo_path=/opt/risu/risu-insights \
-  -e risu_insights_venv_path=/opt/risu/.venv
+cd risu-insights
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-To wipe the mcphost config without uninstalling packages, run the playbook with
-`mcphost_state=absent -e mcphost_cleanup_package=false`, then rerun with
-defaults to regenerate the configuration.
+### 3. Deploy Using the Role
 
- try:
+From the role directory, use the deployment script:
 
-    list_inventory
-    run_diagnostics
-    run_playbook
+```bash
+cd /path/to/ansible-ollama_mcphost
+./deploy.sh --servers risu-insights --enable-gpu --gpu-runtime rocm
+```
 
+Or use the example playbook:
 
-Re-run with `ollama_state=absent` and `mcphost_state=absent` to remove the
-stack, optionally toggling `mcphost_cleanup_package` to uninstall the CLI.
-<img width="1651" height="944" alt="Screenshot_2025-11-06_04-40-31" src="https://github.com/user-attachments/assets/4b8ed721-b4d1-4b69-a584-1809c0b36db5" />
-<img width="1732" height="977" alt="Screenshot_2025-11-06_04-38-27" src="https://github.com/user-attachments/assets/17074764-1e5c-4472-96fc-056ba833c711" />
-<img width="1853" height="960" alt="Screenshot_2025-11-06_04-38-10" src="https://github.com/user-attachments/assets/b4dffd05-0dc4-4f08-8bc8-a47c1c05893c" />
-<img width="1534" height="961" alt="Screenshot_2025-11-06_04-33-35" src="https://github.com/user-attachments/assets/8252ebbe-4065-4460-9bd5-5cde79d1aa74" />
+```bash
+ansible-playbook examples/risu-insights.yml
+```
 
+### 4. Verify the Setup
 
+```bash
+mcphost
+```
+
+You should see the RISU Insights tools loaded. Try asking the model to run RISU diagnostics or create remediation playbooks.
+
+## Manual Configuration
+
+If you prefer to configure manually, the `config.yml` file in this directory shows the required configuration:
+
+```yaml
+risu-insights:
+  type: "local"
+  command: ["./run-server.sh"]
+  cwd: "{{ server_dir }}"
+  environment:
+    RISU_INSIGHTS_ROOT: "{{ server_dir }}"
+    RISU_INSIGHTS_INVENTORY: "{{ server_dir }}/inventory/hosts"
+    RISU_VENV: "{{ server_dir }}/.venv"
+  description: "RISU Insights MCP server - exposes RISU diagnostics and Ansible remediation playbooks"
+```
+
+**Note:** The role automatically:
+- Converts relative paths to absolute paths
+- Adds `/bin/bash` interpreter for shell scripts
+- Validates that the script exists
+- Sets up the correct working directory and environment variables
+
+## Troubleshooting
+
+### "broken pipe" or "initialization timeout" Error
+
+This usually means the virtual environment is missing. Make sure you've completed step 2 above:
+
+```bash
+cd mcp_servers/risu-insights
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+### "executable file not found" Error
+
+The role validates that the script exists. If you see this error, check that:
+- The `run-server.sh` file exists in the `risu-insights` directory
+- The file is executable: `chmod +x run-server.sh`
+
+### Server Not Loading Tools
+
+If `mcphost` starts but shows "Loaded 0 tools":
+- Check that the virtual environment is set up correctly
+- Verify that all dependencies are installed: `pip install -r requirements.txt`
+- Check the server logs for errors
+
+## Configuration Details
+
+The role automatically handles:
+- **Path Resolution**: Converts `./run-server.sh` to absolute path
+- **Interpreter**: Adds `/bin/bash` for shell scripts
+- **Working Directory**: Sets `cwd` to the server directory
+- **Environment Variables**: Configures `RISU_INSIGHTS_ROOT`, `RISU_INSIGHTS_INVENTORY`, and `RISU_VENV`
+
+## More Information
+
+- RISU Insights Repository: https://github.com/Spectro34/risu-insights
+- Role Documentation: [../../README.md](../../README.md)
+- MCP Servers Guide: [../README.md](../README.md)
