@@ -2,18 +2,18 @@
 
 RISU Insights is an MCP server that exposes RISU diagnostics and Ansible remediation playbooks.
 
-## Quick Setup Using the Role
+## Quick Setup Using `deploy.sh`
 
-The easiest way to set up RISU Insights is using the `ansible-ollama_mcphost` role:
+The `ansible-ollama_mcphost` repo already ships with this server under `mcp_servers/risu-insights`, so the fastest path is:
 
-### 1. Clone the RISU Insights Repository
+1. (Optional) Refresh the server sources:
 
 ```bash
 cd /path/to/ansible-ollama_mcphost/mcp_servers
-git clone https://github.com/Spectro34/risu-insights.git risu-insights
+git clone https://github.com/Spectro34/risu-insights.git risu-insights   # skip if already present
 ```
 
-### 2. Set Up the Server Dependencies
+2. Set up the Python environment the server expects:
 
 ```bash
 cd risu-insights
@@ -22,16 +22,26 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. Deploy Using the Role
-
-From the role directory, use the deployment script:
+3. Deploy from the role root with `deploy.sh`, explicitly listing this server:
 
 ```bash
 cd /path/to/ansible-ollama_mcphost
+./deploy.sh --servers risu-insights
+```
+
+Add GPU support (optional):
+
+```bash
 ./deploy.sh --servers risu-insights --enable-gpu --gpu-runtime rocm
 ```
 
-Or use the example playbook:
+Need to combine with other MCP servers? Pass a comma-separated list:
+
+```bash
+./deploy.sh --servers filesystem,bash-commands,risu-insights
+```
+
+Prefer a playbook run instead of the wrapper? The equivalent command is:
 
 ```bash
 ansible-playbook examples/risu-insights.yml
