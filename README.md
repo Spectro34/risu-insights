@@ -37,6 +37,14 @@ pip install -e .
 risu-insights-http --inventory /path/to/inventory --host 0.0.0.0 --port 8080
 ```
 
+## Ensure risu is installed on the managed nodes 
+
+```bash
+zypper addrepo https://download.opensuse.org/repositories/home:hsharma/openSUSE_Factory/home:hsharma.repo
+zypper refresh
+zypper install risu
+```
+
 **Inventory Path:**
 - Use `--inventory /path/to/inventory` to specify a custom inventory file when starting the server
 - Default inventory path: `./inventory/hosts` (relative to project root) if not specified
