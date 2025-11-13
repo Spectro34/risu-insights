@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "risu-insights"
 version = "0.1.0"
-description = "MCP server exposing RISU diagnostics via streamable HTTP, SSE, and STDIO transports"
+description = "MCP server exposing RISU diagnostics via STDIO, streamable-http, and SSE transports"
 authors = [{name = "Spectro"}]
 readme = "README.md"
 requires-python = ">=3.10"
@@ -24,8 +24,8 @@ dependencies = [
 dev = ["pytest", "httpx"]
 
 [project.scripts]
-risu-insights-http = "cli:http_main"
 risu-insights-stdio = "cli:stdio_main"
+risu-insights-http = "cli:http_main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["."]

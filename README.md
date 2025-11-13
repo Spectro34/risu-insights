@@ -30,13 +30,6 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -e .
 ```
-
-## Starting the Server
-
-```bash
-risu-insights-http --inventory /path/to/inventory --host 0.0.0.0 --port 8080
-```
-
 ## Ensure risu is installed on the managed nodes 
 
 ```bash
@@ -56,21 +49,23 @@ zypper install risu
 3. `RISU_DIAG_INVENTORY` environment variable
 4. Default `./inventory/hosts` (relative to project root)
 
-The server exposes:
-- `/mcp` - MCP streamable HTTP endpoint (for OpenWebUI)
-- `/sse` - Server-Sent Events endpoint
-- `/healthz` - Health check endpoint
-
 ## Adding to OpenWebUI
 
-1. Start the RISU diagnostics server (see above)
+1. Start the RISU diagnostics server with mcpo bridge:
+   ```bash
+   pip install mcpo
+   mcpo --port 8000 --host 0.0.0.0 -- risu-insights-stdio
+   
+   # Optional mention custom inventory path
+    --inventory /path/to/inventory
+   ```
 
 2. In OpenWebUI, go to **Settings → Tools → Tool Servers**
 
 3. Click **Add Server** and configure:
-   - **Type**: `mcp`
-   - **URL**: `http://localhost:8080/mcp` (adjust host/port if needed)
-   - **OpenAPI Spec**: `openapi.json` (or leave empty)
+   - **Type**: `OpenAPI`
+   - **URL**: `http://localhost:8000`
+   - **OpenAPI Spec**: `openapi.json`
    - **Auth**: `None`
 
 4. Click **Verify** to test the connection

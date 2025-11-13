@@ -51,7 +51,8 @@ class ResolvedHosts:
 
     @property
     def validated(self) -> bool:
-        return bool(self.hosts) and self.error is None
+        # Valid if we have hosts, even if there are warnings (errors that start with "Some selectors")
+        return bool(self.hosts) and (self.error is None or (self.error and self.error.startswith("Some selectors")))
 
     def to_dict(self) -> Dict[str, object]:
         data = {"selector": self.selector, "hosts": self.hosts, "count": len(self.hosts), "validated": self.validated}
@@ -177,8 +178,13 @@ def resolve_hosts(selector: str, inventory: str | Path | None = None) -> Resolve
         includes = ["all"]
 
     expanded: List[str] = []
+    unmatched_tokens: List[str] = []
     for token in includes or ["all"]:
-        expanded.extend(_expand_token(token, summary))
+        token_hosts = _expand_token(token, summary)
+        if token_hosts:
+            expanded.extend(token_hosts)
+        else:
+            unmatched_tokens.append(token)
 
     if excludes:
         exclusion_set = {host for token in excludes for host in _expand_token(token, summary)}
@@ -186,9 +192,33 @@ def resolve_hosts(selector: str, inventory: str | Path | None = None) -> Resolve
 
     expanded = _dedupe(expanded)
     if not expanded:
-        return ResolvedHosts(selector=selector, error=f"No hosts matched selector '{selector}'")
+        # Provide helpful error message
+        available_groups = list(summary.groups.keys())
+        available_hosts = summary.hosts[:5]  # Show first 5 hosts
+        error_msg = f"No hosts matched selector '{selector}'"
+        if unmatched_tokens:
+            error_msg += f". Unmatched tokens: {', '.join(unmatched_tokens)}"
+            # Suggest corrections for tokens with spaces
+            for token in unmatched_tokens:
+                if ' ' in token:
+                    # Try to find a matching group by removing "hosts" or "servers" suffix
+                    suggested = token.replace(' hosts', '').replace(' servers', '').replace('hosts', '').replace('servers', '').strip()
+                    if suggested in summary.groups:
+                        error_msg += f". Did you mean '{suggested}' instead of '{token}'?"
+        if ' ' in selector and ',' not in selector:
+            error_msg += f". Note: Selectors with spaces are split. Use comma-separated groups like 'sles,webservers' or just the group name 'sles'"
+        if available_groups:
+            error_msg += f". Available groups: {', '.join(available_groups)}"
+        if available_hosts:
+            error_msg += f". Sample hosts: {', '.join(available_hosts)}"
+        return ResolvedHosts(selector=selector, error=error_msg)
+    
+    # If we have results but some tokens didn't match, include a warning in the error field
+    warning = None
+    if unmatched_tokens:
+        warning = f"Some selectors didn't match: {', '.join(unmatched_tokens)}. Only matched hosts will be processed."
 
-    return ResolvedHosts(selector=selector, hosts=expanded)
+    return ResolvedHosts(selector=selector, hosts=expanded, error=warning)
 
 
 def _expand_token(token: str, summary: InventorySummary) -> List[str]:
@@ -199,4 +229,9 @@ def _expand_token(token: str, summary: InventorySummary) -> List[str]:
         return summary.groups[token][:]
     if token in summary.hosts:
         return [token]
-    return [host for host in summary.hosts if fnmatch(host, token)]
+    # Try pattern matching
+    matched = [host for host in summary.hosts if fnmatch(host, token)]
+    # If no match and token contains spaces, suggest it might be multiple selectors
+    if not matched and ' ' in token:
+        return []  # Return empty to trigger better error message
+    return matched

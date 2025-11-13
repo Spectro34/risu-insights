@@ -1,13 +1,18 @@
+"""
+HTTP Transport for MCP Server
+
+Supports streamable-http and SSE endpoints for direct HTTP clients.
+"""
+
 from __future__ import annotations
 
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware import Middleware
 from starlette.responses import JSONResponse
 
 from config import get_settings
 from mcp_app import mcp
 
-# Add custom routes to the MCP app for health checks
+# Health check endpoints
 @mcp.custom_route("/healthz", methods=["GET"])
 async def healthcheck(request):
     return JSONResponse({"status": "ok"})
@@ -20,15 +25,14 @@ async def readiness(request):
     return JSONResponse({
         "status": "ready" if inventory_ok else "degraded",
         "inventory": str(settings.inventory_path),
-        "runner_dir": str(settings.runner_dir),
     })
 
 
-# Get the MCP streamable HTTP app - this is the main app
-# It handles /mcp internally and now also has /healthz and /readyz
+# Get the MCP streamable HTTP app
+# Supports: /mcp (streamable-http) and /sse (Server-Sent Events)
 app = mcp.streamable_http_app()
 
-# Add CORS middleware directly to the Starlette app
+# CORS middleware for web clients
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -36,3 +40,4 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+

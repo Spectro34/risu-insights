@@ -1,0 +1,11 @@
+risu-insights:
+  type: "local"
+  command: ["python3", "-c", "import sys; sys.path.insert(0, '{{ server_dir }}'); from config import configure_settings; from mcp_app import mcp; import anyio; configure_settings(project_root='{{ server_dir }}', inventory='{{ server_dir }}/inventory/hosts', runner_dir='{{ server_dir }}/.ansible-runner'); anyio.run(mcp.run_stdio_async)"]
+  cwd: "{{ server_dir }}"
+  environment:
+    RISU_DIAG_ROOT: "{{ server_dir }}"
+    RISU_DIAG_INVENTORY: "{{ server_dir }}/inventory/hosts"
+    RISU_DIAG_RUNNER_DIR: "{{ server_dir }}/.ansible-runner"
+    PYTHONPATH: "{{ server_dir }}"
+    PYTHONUNBUFFERED: "1"
+  description: "RISU Diagnostics MCP Server - Run RISU diagnostics on your inventory and receive clean reports"
