@@ -1,4 +1,0 @@
-fastmcp
-ansible-runner>=2.0
-ansible>=2.9
-

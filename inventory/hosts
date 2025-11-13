@@ -23,6 +23,7 @@ db2.example.com
 [appservers]
 app.example.com
 app2.example.com
+app3.example.com
 
 # Localhost for testing
 [localhost]
