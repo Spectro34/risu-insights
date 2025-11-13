@@ -84,3 +84,7 @@ zypper install risu
 - Run on all hosts: `run_diagnostics(hosts="all")`
 - Use custom inventory: `run_diagnostics(hosts="localhost", inventory="/path/to/custom/inventory")`
 - Show inventory from custom path: `show_inventory(inventory="/path/to/custom/inventory")`
+
+<img width="1381" height="878" alt="list_inventory" src="https://github.com/user-attachments/assets/df448fca-9711-42ee-aa68-4cd004d223f8" />
+
+<img width="1201" height="845" alt="run_multiplehosts" src="https://github.com/user-attachments/assets/b8d17ded-3eac-4983-a4fa-e42366669998" />
